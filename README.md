@@ -1,61 +1,89 @@
-# Plants War 2 — Offline Restorasyon
+# Plants War 2 — Offline Restoration
 
-Sunucuları kapanmış *Plants War 2* (com.ftt.pw2.global.gl 1.0.6), tamamen çevrimdışı.
-**Oyun sunucusu APK'nın içinde**: oyun açılınca cihazın kendi `127.0.0.1` adresinde çalışıyor.
-Aynı `build/pw2.apk` telefonda, tablette ve PC emülatöründe internetsiz çalışır.
+*Plants War 2* (Four33, `com.ftt.pw2.global.gl` 1.0.6) was an online-only Android game whose servers shut
+down years ago. This project brings it back to life **fully offline**: the game server was reverse-engineered
+from the client and re-implemented, and it now runs **inside the APK itself**. On launch the game talks to its
+own `127.0.0.1`, so it works without internet on phones, tablets and the Android emulator.
 
-## Telefona / tablete kurmak
-1. `build/pw2.apk` dosyasını telefona at (USB, Drive, Telegram... ne olursa).
-2. Dosyaya dokun, "bilinmeyen kaynaklardan yükleme" iznini ver, kur.
-   Play Protect uyarırsa: *Ayrıntılar → Yine de yükle*.
-3. Bitti. İnternet, hesap, ek uygulama gerekmez. Kayıt telefonun içinde tutulur.
+> This repository contains no game files. You need your own copy of the original APK
+> (`Plants War 2 1.0.6`, `com.ftt.pw2.global.gl`). Not affiliated with Four33.
 
-Gereksinim: Android 5+ ve **32-bit ARM uygulamalarını çalıştırabilen** bir cihaz
-(oyunun motoru 32-bit, kaynak kodu yok). Galaxy A52 dahil çoğu telefon olur;
-yalnızca 64-bit çalışan yeni cihazlarda (ör. Pixel 7 ve sonrası) kurulmaz.
+## What works
+- Guest account, tutorial, hero selection (all three classes), Story mode, gear, minions, skills, stats,
+  skins, quests, achievements, daily rewards, Lucky Chests, shop (with in-game currencies)
+- League / 3 vs 3 / Unlimited Battle / Time Attack against the client's own bots
+- Gold, Leaf, Keys and Honor Points are kept at **999,999** (refilled on every login), since purchases are gone
+- Progress is saved on the device; backup/restore over adb (see below)
 
-## PC'de oynamak
-- Uygulama menüsünde **Plants War 2** ya da `~/pw2/play.sh` (Android emülatörü, RTX/host GPU).
-  APK değiştiyse emülatördeki oyunu kendisi günceller; kayıt korunur.
-- Grafik sorunu olursa: `PW2_GPU=swiftshader_indirect ~/pw2/play.sh`
+Not available: real-money purchases, friends, Facebook / Google Play features.
 
-## Kayıt yedekleme / taşıma (PC ↔ telefon)
-Oyun açıkken, cihaz USB hata ayıklama (ya da emülatör) ile bağlıyken:
+## Quick start
+Requirements: Linux, Python 3, a JDK (21 tested), [apktool](https://apktool.org) 3.x, Android SDK
+build-tools (d8, zipalign, apksigner), LLVM (`llvm-mc`, `ld.lld`, `llvm-objcopy`).
+Tool locations are read from `scripts/env.sh` (defaults: `tools/`, `android-sdk/`; override with
+`JDK=… APKTOOL=… ANDROID_SDK=…`).
+
+```sh
+scripts/setup.sh /path/to/Plants_War_2_1.0.6.apk   # unpack your APK, patch data, create a signing key
+scripts/build.sh                                    # -> build/pw2.apk
 ```
-scripts/save.sh export                 # -> saves/pw2-save-<tarih>.json
-scripts/save.sh import <dosya.json>    # sonra oyunu kapatıp aç
+
+### Install on a phone / tablet
+Copy `build/pw2.apk` to the device and install it (allow "unknown sources"; Play Protect may ask to confirm).
+That's it — no internet or companion app needed.
+
+Requires a device that can run **32-bit ARM** apps (the game engine is 32-bit, no source code exists).
+Android 4.0 – 16 are supported (tested so far on an Android 11 emulator); 64-bit-only devices (e.g. Pixel 7
+and newer) cannot run it.
+
+### Play on PC (Android emulator)
+Create an Android 11 x86_64 `google_apis` AVD named `pw2` (it translates ARM code), e.g.
+```sh
+sdkmanager "system-images;android-30;google_apis;x86_64" emulator platform-tools "build-tools;34.0.0"
+avdmanager create avd -n pw2 -k "system-images;android-30;google_apis;x86_64"
 ```
-Birden fazla cihaz bağlıysa: `ANDROID_SERIAL=<seri> scripts/save.sh ...`
-Kaydı başka cihaza taşırken: önce yeni cihazda oyunu bir kez açıp misafir hesabı oluştur,
-sonra import et (hesap numarası aynı olur: ilk hesap hep 1001).
+then run `./play.sh` (starts the emulator, installs/updates `build/pw2.apk`, launches the game).
+Use `PW2_GPU=swiftshader_indirect ./play.sh` if host GPU rendering misbehaves.
 
-## Para birimleri
-Satın alma yok, bu yüzden Altın / Leaf / Anahtar / Taç **999999**; her girişte tekrar 999999'a doldurulur.
+### Saves
+The save lives in the app's private storage. With the game running and the device connected over adb:
+```sh
+scripts/save.sh export                 # -> saves/pw2-save-<date>.json
+scripts/save.sh import <save.json>     # then restart the game
+```
+To move a save to a new device, start the game there once and create the guest account first
+(the first account is always #1001), then import.
 
-## Eksik metinler
-Oyunun eski sunucusu metin paketleri de gönderiyordu; bunlar kayıp. `patches/restored_strings.py` 335 metni geri
-ekliyor. Yine de bulunamayan bir metin olursa oyun artık "Can not find text id" hatası **göstermez**:
-`libGame.so`'daki `StringManager::GetString` yaması kimliği okunur hâle getirir (`superman_title` → "Superman title")
-ve logcat'e yazar. Eksikleri görmek: `adb logcat -d -s PW2Text` → `restored_strings.py`'ye ekle → `scripts/build.sh`.
-
-## Bileşenler
-| Parça | Ne yapar |
+## How it works
+| Part | What it does |
 |---|---|
-| `offline/src/pw2/offline/` | **APK içindeki sunucu** (Java, Android API'si kullanmaz): HTTP, şifre, ~110 `act`, JSON kayıt |
-| `apk_smali` yamaları | `GameActivity.onCreate` → `OfflineServer.start`; XIGNCODE kapalı; targetSdk 24 (Android 15+ kurulum için) |
-| `server/` | Aynı sunucunun Python hâli (geliştirme/referans): `pw2server.py`, `pw2crypto.py`, `handlers.py` |
-| `offline/test/replay.py` | Fark testi: kayıtlı gerçek istekleri Python ve Java sunucusundan geçirip cevap + kaydı karşılaştırır |
-| `glshim/` | `libpw2gl.so`: GLES1 araya girici; matris yığınlarını takip edip `glGetFloatv(MODELVIEW/PROJECTION)` cevaplar (emülatörde harita/obje kaybolmasını düzeltir) |
-| `scripts/patch_lib.py` | `libGame.so`: sunucu adresleri → `127.0.0.1`, `libGLESv1_CM.so` → `libpw2gl.so`, `GetString` yaması (`patches/getstring_miss.s`) |
-| `patches/restored_strings.py` | Kayıp metinler (takma ad / türetilmiş / elle yazılmış) — `scripts/patch_data.py` ekler |
-| `patches/apk_overlay/` | Değiştirilmiş smali + manifest (derlemede `apk_smali/` üstüne kopyalanır) |
-| `scripts/patch_data.py` | Eksik veri: `common` (max_stage_level/max_challenge), 67 metin, `*_global.xml`, `language_table` |
-| `scripts/build.sh` | Hepsini derler: lib yaması + Java sunucu (d8 ile `classes.dex`'e eklenir) + imza → `build/pw2.apk` |
-| `scripts/save.sh` | Kayıt dışa/içe aktarma (`adb forward` → oyunun `/pw2/admin/save` adresi, sadece cihazın içinden erişilir) |
+| `offline/src/pw2/offline/` | The server embedded in the APK (plain Java 8, no Android APIs): HTTP on ports 10005/10015/10030/10080/12380, the game's transport cipher, ~110 `act` handlers, JSON save |
+| `server/` | The same server in Python (reference / development): `pw2server.py`, `pw2crypto.py`, `handlers.py` |
+| `offline/test/replay.py` | Differential test: replays recorded client traffic through both servers and compares every response and the resulting save |
+| `scripts/patch_apk.py` | Java side: XIGNCODE anti-cheat off, `GameActivity.onCreate` starts `OfflineServer`, targetSdk 24 |
+| `scripts/patch_lib.py` | `libGame.so`: server URLs → `127.0.0.1`; GLES1 → `libpw2gl.so`; `StringManager::GetString` patch (`patches/getstring_miss.s`) |
+| `glshim/` | `libpw2gl.so`, a GLES1 interposer that tracks the matrix stacks itself — emulated GLES1 returns garbage for `glGetFloatv(GL_MODELVIEW/PROJECTION_MATRIX)`, which made the game cull the whole map |
+| `scripts/patch_data.py` | Data the update server used to push: `common` table keys, `*_global` tables, `language_table`, missing texts |
+| `patches/restored_strings.py`, `patches/extra_strings.py` | ~335 restored texts (aliases, derived names, and new descriptions) |
+| `scripts/build.sh` | Patches + compiles the server, merges it into `classes.dex` with d8, signs → `build/pw2.apk` |
+| `scripts/save.sh` | Save export/import via `adb forward` to the game's loopback-only `/pw2/admin/save` endpoint |
 
-Geliştirme: `PW2_HOST=10.0.2.2 scripts/build.sh` → emülatörde PC'deki Python sunucusunu kullanan APK.
-Sunucu loglarını görmek: `adb shell setprop debug.pw2 1` (oyunu yeniden aç) → `adb logcat -s PW2Server`.
+### Protocol in short
+`GetServiceInfo.aspx` (JSON) points the client to the game server; `update.php`, `login.php` and
+`action.php` take `PD=<base64>` bodies encrypted with a custom cipher (8-byte random key, nibble-swap/XOR
+states, rolling step; also used for the `.x` data files). One request batches several *acts*
+(`act=22&...&&act=89&&&idx_id=...`); the answer is `<result><msg>1</msg><act v="N">…</act>…</result>`.
+The client computes game logic and reports deltas; the server stores state and assigns ids.
 
-## Bilinen sınırlamalar
-- Arkadaş / Facebook / Google Play özellikleri devre dışı.
-- PvP / Arena rakipleri oyunun kendi ürettiği botlardır.
+### Missing texts
+The update server also pushed string tables, which are lost. Texts that are still missing no longer show
+"Can not find text id": the patched `GetString` shows a readable version of the id (`superman_title` →
+"Superman title") and logs it:
+```sh
+adb logcat -d -s PW2Text      # add real texts to patches/restored_strings.py, rebuild
+```
+
+### Development
+- `PW2_HOST=10.0.2.2 scripts/build.sh` builds an APK that uses the Python server on the host (`server/pw2server.py`).
+- `adb shell setprop debug.pw2 1` (restart the game) logs every request of the embedded server: `adb logcat -s PW2Server`.
+- Reverse-engineering helpers (Ghidra headless scripts, PIC string resolver, act table extraction) are in `scripts/`.
