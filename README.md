@@ -12,7 +12,9 @@ own `127.0.0.1`, so it works without internet on phones, tablets and the Android
 - Guest account, tutorial, hero selection (all three classes), Story mode, gear, minions, skills, stats,
   skins, quests, achievements, daily rewards, Lucky Chests, shop (with in-game currencies)
 - League / 3 vs 3 / Unlimited Battle / Time Attack against the client's own bots
-- Gold, Leaf, Keys and Honor Points are kept at **999,999** (refilled on every login), since purchases are gone
+- Gold, Leaf, Keys and Honor Points are kept at **9,000,000** (refilled on every login) — enough to max every
+  stat and building, since purchases are gone
+- Story intro, every tutorial step and all modes (League, 3 vs 3, Unlimited Battle, Time Attack) work
 - Progress is saved on the device; backup/restore over adb (see below)
 
 Not available: real-money purchases, friends, Facebook / Google Play features.
@@ -43,7 +45,8 @@ sdkmanager "system-images;android-30;google_apis;x86_64" emulator platform-tools
 avdmanager create avd -n pw2 -k "system-images;android-30;google_apis;x86_64"
 ```
 then run `./play.sh` (starts the emulator, installs/updates `build/pw2.apk`, launches the game).
-Use `PW2_GPU=swiftshader_indirect ./play.sh` if host GPU rendering misbehaves.
+It uses software rendering by default: with host GPU this emulator build loses its GL context on NVIDIA
+after a while and Android freezes. `PW2_GPU=host ./play.sh` is faster if your GPU driver behaves.
 
 ### Saves
 The save lives in the app's private storage. With the game running and the device connected over adb:
@@ -82,6 +85,12 @@ The update server also pushed string tables, which are lost. Texts that are stil
 ```sh
 adb logcat -d -s PW2Text      # add real texts to patches/restored_strings.py, rebuild
 ```
+
+### Restored server-side behaviour (beyond the protocol)
+- The story intro (`<play type="intro"/>`) and its captions only existed in the server-pushed script.
+- The global client opens its shop as UI `shop_global`, and it shows 3 cards instead of 4; the stage-6
+  minion-ticket tutorial pointed at `shop` card 4 and waited forever. `patch_data.py` fixes the script.
+- `superman_chk` at login is what makes Time Attack exist at all; daily entry counters are "used", not "left".
 
 ### Development
 - `PW2_HOST=10.0.2.2 scripts/build.sh` builds an APK that uses the Python server on the host (`server/pw2server.py`).

@@ -33,7 +33,7 @@ RES_FIELDS = {  # server item type -> LoadResource element (act 89)
     36: "enchant_2", 37: "enchant_3", 38: "enchant_4",
     51: "unit_1_t", 52: "unit_2_t", 61: "parts_1_t", 62: "parts_2_t", 63: "armor_1_t", 64: "armor_2_t",
 }
-CURRENCIES, CURRENCY_FULL = ("gold", "iap", "key", "pcoin"), 999999   # purchases are gone: keep these topped up
+CURRENCIES, CURRENCY_FULL = ("gold", "iap", "key", "pcoin"), 9000000  # purchases are gone: keep these topped up
 START_RES = {"gold": CURRENCY_FULL, "iap": CURRENCY_FULL, "key": CURRENCY_FULL, "pcoin": CURRENCY_FULL, "hp_p": 3, "mp_p": 3, "cool_p": 1,
              "return_s": 1, "rebirth_s": 1}
 STAMINA_MAX, STAMINA_REGEN = 30, 300     # action points, seconds per point
@@ -176,7 +176,7 @@ def act_22(a, g):  # Login
     x = [f'<skey>{esc(u["skey"])}</skey>', f'<nick>{esc(u["nick"])}</nick>', "<sns_list></sns_list>"]
     for k in ("tutorial", "pvp", "arena", "challenge", "superman"):
         x.append(f"<{k}>{fl.get(k, 0)}</{k}>")
-    x += [f'<superman_chk>0</superman_chk>', '<crm_chk>0</crm_chk>', f'<review>{fl.get("review", 0)}</review>',
+    x += [f'<superman_chk>1</superman_chk>', '<crm_chk>0</crm_chk>', f'<review>{fl.get("review", 0)}</review>',
           f'<last_hero>{u["hero_type"] if u["heroes"] else 0}</last_hero>', '<alarm>3</alarm>',
           '<pvp_result>0</pvp_result>', '<win_restore>0</win_restore>']
     for c in CURRENCIES:                        # refill gold / leaf / key / crown on every login
@@ -647,7 +647,7 @@ def act_63(a, g):  return ""
 
 # ---------------------------------------------------------------- pvp / arena / challenge / super (vs. bots)
 def act_102(a, g):  # ArenaInfo
-    return '<arena r_t="0" win_cnt="0"/><win_list></win_list>'
+    return f'<arena r_t="{secs_to_midnight()}" win_cnt="0"/><win_list></win_list>'
 
 def act_110(a, g):  return "<revenge_list></revenge_list>"
 
@@ -663,12 +663,19 @@ def act_107(a, g): return _log("challenge")    # ChallengeEntrance
 def act_115(a, g): return _log("superman")     # SuperEnterance
 def act_111(a, g): return _log("revenge")      # RevengeEnterance
 
-def act_65(a, g):  # LoadPvPRank
+def week_no():  # Monday-based week number (same formula as the Java port)
+    return (datetime.date.today().toordinal() - datetime.date(1970, 1, 1).toordinal() + 3) // 7
+
+def act_65(a, g):  # LoadPvPRank; the weekly "League Result" popup only once a week, after playing
     u = U(g)
     p = pvp(u) if u else {"league": 1, "score": 0, "win_cnt": 0, "match_cnt": 0}
-    return (f'<pvp_rank league="{p["league"]}" total="1" rank="1" score="{p["score"]}" ex_ud="0" '
-            f'enter_rwd="0" win_cnt="{p["win_cnt"]}" match_cnt="{p["match_cnt"]}" l_t="{secs_to_midnight()}"/>'
-            f'<pvp_reward league="{p["league"]}" total="1" rank="1" score="{p["score"]}"/>')
+    x = (f'<pvp_rank league="{p["league"]}" total="1" rank="1" score="{p["score"]}" ex_ud="0" '
+         f'enter_rwd="0" win_cnt="{p["win_cnt"]}" match_cnt="{p["match_cnt"]}" l_t="{secs_to_midnight()}"/>')
+    if u and p.get("reward_week") != week_no():
+        if p.get("reward_week") is not None and p["match_cnt"] > 0:
+            x += f'<pvp_reward league="{p["league"]}" total="1" rank="1" score="{p["score"]}"/>'
+        p["reward_week"] = week_no(); state.save()
+    return x
 
 def act_66(a, g):  # PvPResult(score, result)
     u = U(g)
@@ -695,11 +702,11 @@ def act_136(a, g):
     return ""
 def act_137(a, g): return ""
 
-def act_106(a, g):  # ChallengeInfo
-    return f'<challenge b_w="0" cnt="5" max_cnt="5" r_t="{secs_to_midnight()}"/>'
+def act_106(a, g):  # ChallengeInfo: cnt = entries used today (0 -> always full, offline has no daily cap)
+    return f'<challenge b_w="0" cnt="0" max_cnt="3" r_t="{secs_to_midnight()}"/>'
 
-def act_114(a, g):  # SuperInfo
-    return f'<superman cnt="5" max_cnt="5" r_t="{secs_to_midnight()}"/>'
+def act_114(a, g):  # SuperInfo: cnt = entries used today
+    return f'<superman cnt="0" max_cnt="5" r_t="{secs_to_midnight()}"/>'
 
 def dispatch(a, g):
     if "mute" + str(a.get("act")) in _strip(): return ""

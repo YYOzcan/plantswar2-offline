@@ -133,15 +133,13 @@ TEXT = {
     "stage_intro_4": "Desert\\nThe scorching Desert is ruled by fierce beasts. Don't let the heat slow you down!",
     "stage_intro_5": "Jungle\\nThe last stand! The mightiest animals gather in the Jungle. Bring peace back to the forest!",
     "stage_intro_6": "A new area awaits. Keep fighting for the forest!",
-    # ---- game intro slides (UpdateScene::ResetIntro)
-    "intro_0": "Long ago, plants and animals lived together in peace in the great forest.",
-    "intro_1": "Gaia, the guardian of the Dryad Forest, watched over every tree and flower.",
-    "intro_2": "But one day, the animals went wild and began to ravage the forest.",
-    "intro_3": "Trees were torn down and the Sanctuaries of the plants came under attack.",
-    "intro_4": "Gaia called upon the bravest Heroes of the plant world.",
-    "intro_5": "Warriors, mages and archers took up arms to protect their home.",
-    "intro_6": "Now it is your turn. Lead the plants and save the forest!",
-    "intro_7": "Now it is your turn. Lead the plants and save the forest!",
+    # ---- story intro (ScriptManager <play type="intro"/>: loading/scene_1..6 + caption intro_1..6)
+    "intro_1": "Long ago, a terrible war between plants and animals burned the great forest to ashes.",
+    "intro_2": "At last, the leaders of both sides met and swore an oath of peace.",
+    "intro_3": "Plants and animals lived side by side, and the forest grew green once again.",
+    "intro_4": "But the animal chiefs grew greedy and wanted the whole forest for themselves.",
+    "intro_5": "They broke the oath and stormed the plants' homes. The war has begun again!",
+    "intro_6": "The forest needs a hero. Rise up and protect the forest!",
 }
 
 

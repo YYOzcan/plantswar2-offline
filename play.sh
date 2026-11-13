@@ -9,7 +9,8 @@ EMU="$PW2/android-sdk/emulator/emulator"
 PKG=com.ftt.pw2.global.gl
 APK="$PW2/build/pw2.apk"
 LOG="$PW2/launcher.log"
-GPU="${PW2_GPU:-host}"          # host (RTX), or swiftshader_indirect as a fallback
+GPU="${PW2_GPU:-swiftshader_indirect}"   # software GL: stable. "host" (GPU) is faster but this emulator
+                                         # build loses its GL context on NVIDIA after a while ("null ctx"), freezing Android
 
 notify() { command -v notify-send >/dev/null && notify-send -a "Plants War 2" "Plants War 2" "$1"; echo "$1"; }
 

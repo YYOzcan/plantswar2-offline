@@ -52,7 +52,24 @@ def copy_as(src_rel, dst_rel):
     shutil.copyfile(SRC + src_rel, DST + dst_rel); print('created', dst_rel)
 copy_as('Data/shop.x', 'Data/shop_global.x')
 copy_as('Data/package.x', 'Data/package_global.x')
-copy_as('Data/script.x', 'Data/script_global.x')
+
+# the story intro (6 illustrated scenes) played before Gaia's welcome; only the server-pushed script had it
+INTRO = '<script id="1" tutorial = "true" area = "0" stage = "0" mode = "select">'
+def script(xml):
+    assert xml.count(INTRO) == 1
+    xml = xml.replace(INTRO, INTRO + '\r\n\t\t<play type = "intro" />')
+    # the global client opens its shop as UI "shop_global": with "shop" the stage-6 minion-ticket
+    # tutorial never finds its button and waits forever (softlock)
+    assert xml.count('ui_name = "shop"') >= 1
+    xml = xml.replace('ui_name = "shop"', 'ui_name = "shop_global"')
+    # the global shop shows 3 cards instead of 4, so the 4th card (normal minion chest, which takes the
+    # minion ticket) is off-screen and the list is locked during the tutorial: scroll it into view first
+    old = 'ui_name = "shop_global" scroll_name="list" value = "3"'
+    assert xml.count(old) == 1
+    return xml.replace(old, 'ui_name = "shop_global" scroll_name="list" scroll_rate = "100" value = "3"')
+patch('Data/script.x', script)
+plain, ok = pw2crypto.decode(open(DST + 'Data/script.x', 'rb').read())
+open(DST + 'Data/script_global.x', 'w').write(pw2crypto.encode(plain)); print('created Data/script_global.x')
 
 LANGS = [(1, "language_korea"), (2, "language_english"), (3, "language_japan"),
          (4, "language_china_simple"), (5, "language_china"), (6, "language_thai")]

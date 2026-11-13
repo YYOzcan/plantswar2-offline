@@ -30,6 +30,13 @@ final class Handlers {
         return c;
     }
 
+    /** Monday-based local week number (same formula as server/handlers.py week_no) */
+    static long weekNo() {
+        long ms = System.currentTimeMillis();
+        long epochDay = (ms + java.util.TimeZone.getDefault().getOffset(ms)) / 86400000L;   // positive, so / == floor
+        return (epochDay + 3) / 7;
+    }
+
     static long secsToMidnight() { return Math.max(60, midnight().getTimeInMillis() / 1000L - now()); }
 
     static String today() {
@@ -110,7 +117,7 @@ final class Handlers {
     }
     /** Gold, leaf (iap), key and crown (pcoin): purchases are gone, so these are kept topped up. */
     static final String[] CURRENCIES = {"gold", "iap", "key", "pcoin"};
-    static final long CURRENCY_FULL = 999999;
+    static final long CURRENCY_FULL = 9000000;   // enough to max every stat and building, far from int32 limits
 
     static Map<String, Object> startRes() {
         return map("gold", CURRENCY_FULL, "iap", CURRENCY_FULL, "key", CURRENCY_FULL, "pcoin", CURRENCY_FULL,
@@ -615,20 +622,25 @@ final class Handlers {
             case 45: case 46: case 47: case 48: case 49: return "<frd_list></frd_list>";
             case 150: return "<mission_list></mission_list>";
             // pvp / arena / challenge / super (vs. bots)
-            case 102: return "<arena r_t=\"0\" win_cnt=\"0\"/><win_list></win_list>";
+            case 102: return "<arena r_t=\"" + secsToMidnight() + "\" win_cnt=\"0\"/><win_list></win_list>";
             case 110: return "<revenge_list></revenge_list>";
             case 64: return logTag("pvp");
             case 103: return logTag("arena");
             case 107: return logTag("challenge");
             case 115: return logTag("superman");
             case 111: return logTag("revenge");
-            case 65: {
+            case 65: {   // LoadPvPRank; the weekly "League Result" popup only once a week, after playing
                 Map<String, Object> u = U(g);
                 Map<String, Object> p = u != null ? pvp(u) : map("league", 1L, "score", 0L, "win_cnt", 0L, "match_cnt", 0L);
-                return "<pvp_rank league=\"" + s(p.get("league")) + "\" total=\"1\" rank=\"1\" score=\"" + s(p.get("score"))
+                String x = "<pvp_rank league=\"" + s(p.get("league")) + "\" total=\"1\" rank=\"1\" score=\"" + s(p.get("score"))
                         + "\" ex_ud=\"0\" enter_rwd=\"0\" win_cnt=\"" + s(p.get("win_cnt")) + "\" match_cnt=\"" + s(p.get("match_cnt"))
-                        + "\" l_t=\"" + secsToMidnight() + "\"/><pvp_reward league=\"" + s(p.get("league"))
-                        + "\" total=\"1\" rank=\"1\" score=\"" + s(p.get("score")) + "\"/>";
+                        + "\" l_t=\"" + secsToMidnight() + "\"/>";
+                if (u != null && (p.get("reward_week") == null || num(p.get("reward_week")) != weekNo())) {
+                    if (p.get("reward_week") != null && num(p.get("match_cnt")) > 0)
+                        x += "<pvp_reward league=\"" + s(p.get("league")) + "\" total=\"1\" rank=\"1\" score=\"" + s(p.get("score")) + "\"/>";
+                    p.put("reward_week", weekNo()); save();
+                }
+                return x;
             }
             case 66: {
                 Map<String, Object> u = U(g);
@@ -648,8 +660,8 @@ final class Handlers {
                 if (u != null && truthy(a.get("league"))) { pvp(u).put("league", num(a.get("league"))); save(); }
                 return "";
             }
-            case 106: return "<challenge b_w=\"0\" cnt=\"5\" max_cnt=\"5\" r_t=\"" + secsToMidnight() + "\"/>";
-            case 114: return "<superman cnt=\"5\" max_cnt=\"5\" r_t=\"" + secsToMidnight() + "\"/>";
+            case 106: return "<challenge b_w=\"0\" cnt=\"0\" max_cnt=\"3\" r_t=\"" + secsToMidnight() + "\"/>";
+            case 114: return "<superman cnt=\"0\" max_cnt=\"5\" r_t=\"" + secsToMidnight() + "\"/>";
             default: return null;
         }
     }
@@ -729,7 +741,7 @@ final class Handlers {
         x.append("<skey>").append(esc(u.get("skey"))).append("</skey><nick>").append(esc(u.get("nick"))).append("</nick><sns_list></sns_list>");
         for (String k : new String[]{"tutorial", "pvp", "arena", "challenge", "superman"})
             x.append('<').append(k).append('>').append(s(get(fl, k, 0L))).append("</").append(k).append('>');
-        x.append("<superman_chk>0</superman_chk><crm_chk>0</crm_chk><review>").append(s(get(fl, "review", 0L))).append("</review>");
+        x.append("<superman_chk>1</superman_chk><crm_chk>0</crm_chk><review>").append(s(get(fl, "review", 0L))).append("</review>");
         x.append("<last_hero>").append(truthy(u.get("heroes")) ? s(u.get("hero_type")) : "0").append("</last_hero>");
         x.append("<alarm>3</alarm><pvp_result>0</pvp_result><win_restore>0</win_restore>");
         Map<String, Object> res = M(u.get("res"));            // purchases are gone: refill currencies every login
