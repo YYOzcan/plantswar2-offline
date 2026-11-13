@@ -27,3 +27,4 @@ glshim/gen.inc
 *.keystore
 tomb.txt
 libGame.strings
+__pycache__/
