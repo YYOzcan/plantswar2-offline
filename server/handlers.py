@@ -95,16 +95,19 @@ def hero(u, t):
             "stages": {},   # "area-stage" -> star
             "power": 0,
         }
-        h = u["heroes"][t]
+    h = u["heroes"][t]
+    if not h.get("starter_given"):               # one-time starter kit (also migrates old saves)
+        h["starter_given"] = 1
         idxs, _ = STARTER[int(t)]
         inv = u["parts"].setdefault(t, {})
-        for slot, idx in zip((1, 2, 3), idxs):          # weapon, hat, hand
-            pid = new_id(u)
-            inv[str(pid)] = {"parts_id": pid, "name": idx, "level": 1, "exp": 0}
-            h["parts"][str(slot)] = str(pid)
-        h["skill"]["11"] = 1
-        h["skill_names"]["1"] = _starter_skill(int(t))
-    return u["heroes"][t]
+        for slot, idx in zip((1, 2, 3), idxs):     # weapon, hat, hand
+            if str(slot) not in h["parts"]:
+                pid = new_id(u)
+                inv[str(pid)] = {"parts_id": pid, "name": idx, "level": 1, "exp": 0}
+                h["parts"][str(slot)] = str(pid)
+        h["skill"].setdefault("11", 1)
+        h["skill_names"].setdefault("1", _starter_skill(int(t)))
+    return h
 
 def stamina(u):
     s = u["stamina"]
@@ -491,7 +494,7 @@ def act_61(a, g):  # StageEntrance -> log key
 
 def act_60(a, g):  # StageResult
     u = U(g)
-    if u and int(a.get("result", 0)):
+    if u and int(a.get("result", 0)) in (2, 4):     # GAME_RESULT: 2 = cleared, 4 = sweep (clear ticket), 3 = quit
         h = hero(u, cur_hero_type(u, g))
         area, st, star = int(a.get("area", 1)), int(a.get("stage", 1)), int(a.get("star", 0))
         key = f"{area}-{st}"
@@ -562,12 +565,18 @@ def act_79(a, g):  # CompleteAchievement (ids come through AchievementManager::S
         u["achieve"].append(a["id"]); state.save()
     return ""
 
-def act_78(a, g):  return ""
+def act_78(a, g):  # achievement progress: type=<counter name>&chg=<delta>
+    u = U(g)
+    if u and a.get("type"):
+        ar = u.setdefault("a_r", {})
+        ar[a["type"]] = int(ar.get(a["type"], 0)) + int(a.get("chg", 0) or 0); state.save()
+    return ""
 
 def act_80(a, g):  # LoadAchievement
     u = U(g)
     body = "".join(f'<a_c id="{esc(i)}"/>' for i in (u["achieve"] if u else []))
-    return f"<a_r/><a_c_list>{body}</a_c_list>"
+    ar = attrs(u.get("a_r", {})) if u else ""
+    return f"<a_r {ar}/><a_c_list>{body}</a_c_list>"
 
 # ---------------------------------------------------------------- daily / boxes / events / gifts
 def act_120(a, g):  # LoadTodayReward
@@ -642,8 +651,56 @@ def act_102(a, g):  # ArenaInfo
     return '<arena r_t="0" win_cnt="0"/><win_list></win_list>'
 
 def act_110(a, g):  return "<revenge_list></revenge_list>"
-def act_106(a, g):  return ""
-def act_114(a, g):  return ""
+
+def _log(tag):
+    return f'<{tag} log_idx="{now()}" log_key="offline"/>'
+
+def pvp(u):
+    return u.setdefault("pvp", {"league": 1, "score": 0, "win_cnt": 0, "match_cnt": 0})
+
+def act_64(a, g):  return _log("pvp")          # PvPEntrance
+def act_103(a, g): return _log("arena")        # ArenaEntrance
+def act_107(a, g): return _log("challenge")    # ChallengeEntrance
+def act_115(a, g): return _log("superman")     # SuperEnterance
+def act_111(a, g): return _log("revenge")      # RevengeEnterance
+
+def act_65(a, g):  # LoadPvPRank
+    u = U(g)
+    p = pvp(u) if u else {"league": 1, "score": 0, "win_cnt": 0, "match_cnt": 0}
+    return (f'<pvp_rank league="{p["league"]}" total="1" rank="1" score="{p["score"]}" ex_ud="0" '
+            f'enter_rwd="0" win_cnt="{p["win_cnt"]}" match_cnt="{p["match_cnt"]}" l_t="{secs_to_midnight()}"/>'
+            f'<pvp_reward league="{p["league"]}" total="1" rank="1" score="{p["score"]}"/>')
+
+def act_66(a, g):  # PvPResult(score, result)
+    u = U(g)
+    if not u: return ""
+    p = pvp(u)
+    p["match_cnt"] += 1
+    if str(a.get("result")) == "2": p["win_cnt"] += 1
+    p["score"] = max(0, p["score"] + int(a.get("score", 0) or 0)); state.save()
+    return f'<pvp rank="1" score="{p["score"]}" win_cnt="{p["win_cnt"]}"/>'
+
+def act_67(a, g):  return ""                    # PvPMatching: no <char> -> client builds a bot
+def act_68(a, g):  return "<char_list></char_list>"
+def act_101(a, g): return '<arena idx_id="0"/>'  # ArenaMatching: 0 -> client generates random bot heroes
+def act_104(a, g): return ""
+def act_108(a, g): return ""
+def act_113(a, g): return ""
+def act_116(a, g): return ""
+def act_73(a, g):  return ""
+def act_112(a, g): return ""
+def act_121(a, g): return ""
+def act_136(a, g):
+    u = U(g)
+    if u and a.get("league"): pvp(u)["league"] = int(a["league"]); state.save()
+    return ""
+def act_137(a, g): return ""
+
+def act_106(a, g):  # ChallengeInfo
+    return f'<challenge b_w="0" cnt="5" max_cnt="5" r_t="{secs_to_midnight()}"/>'
+
+def act_114(a, g):  # SuperInfo
+    return f'<superman cnt="5" max_cnt="5" r_t="{secs_to_midnight()}"/>'
 
 def dispatch(a, g):
     if "mute" + str(a.get("act")) in _strip(): return ""

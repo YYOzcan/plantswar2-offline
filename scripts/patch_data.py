@@ -27,3 +27,18 @@ def common(xml):
 
 patch('String/string_normal_3.x', strings)
 patch('Data/common.x', common)
+
+# "_global" data tables that the global build fetched from the update server
+import shutil
+def copy_as(src_rel, dst_rel):
+    shutil.copyfile(SRC + src_rel, DST + dst_rel); print('created', dst_rel)
+copy_as('Data/shop.x', 'Data/shop_global.x')
+copy_as('Data/package.x', 'Data/package_global.x')
+copy_as('Data/script.x', 'Data/script_global.x')
+
+LANGS = [(1, "language_korea"), (2, "language_english"), (3, "language_japan"),
+         (4, "language_china_simple"), (5, "language_china"), (6, "language_thai")]
+xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<language_list>\r\n' + \
+      ''.join(f'\t<language id="{i}" name="{n}"/>\r\n' for i, n in LANGS) + '</language_list>\r\n'
+open(DST + 'Data/language_table.x', 'w').write(pw2crypto.encode(b'\0\0\0\0' + xml.encode()))
+print('created Data/language_table.x')
