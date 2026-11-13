@@ -32,6 +32,12 @@ sonra import et (hesap numarası aynı olur: ilk hesap hep 1001).
 ## Para birimleri
 Satın alma yok, bu yüzden Altın / Leaf / Anahtar / Taç **999999**; her girişte tekrar 999999'a doldurulur.
 
+## Eksik metinler
+Oyunun eski sunucusu metin paketleri de gönderiyordu; bunlar kayıp. `patches/restored_strings.py` 335 metni geri
+ekliyor. Yine de bulunamayan bir metin olursa oyun artık "Can not find text id" hatası **göstermez**:
+`libGame.so`'daki `StringManager::GetString` yaması kimliği okunur hâle getirir (`superman_title` → "Superman title")
+ve logcat'e yazar. Eksikleri görmek: `adb logcat -d -s PW2Text` → `restored_strings.py`'ye ekle → `scripts/build.sh`.
+
 ## Bileşenler
 | Parça | Ne yapar |
 |---|---|
@@ -40,7 +46,9 @@ Satın alma yok, bu yüzden Altın / Leaf / Anahtar / Taç **999999**; her giri�
 | `server/` | Aynı sunucunun Python hâli (geliştirme/referans): `pw2server.py`, `pw2crypto.py`, `handlers.py` |
 | `offline/test/replay.py` | Fark testi: kayıtlı gerçek istekleri Python ve Java sunucusundan geçirip cevap + kaydı karşılaştırır |
 | `glshim/` | `libpw2gl.so`: GLES1 araya girici; matris yığınlarını takip edip `glGetFloatv(MODELVIEW/PROJECTION)` cevaplar (emülatörde harita/obje kaybolmasını düzeltir) |
-| `scripts/patch_lib.py` | `libGame.so`: sunucu adresleri → `127.0.0.1`, `libGLESv1_CM.so` → `libpw2gl.so` |
+| `scripts/patch_lib.py` | `libGame.so`: sunucu adresleri → `127.0.0.1`, `libGLESv1_CM.so` → `libpw2gl.so`, `GetString` yaması (`patches/getstring_miss.s`) |
+| `patches/restored_strings.py` | Kayıp metinler (takma ad / türetilmiş / elle yazılmış) — `scripts/patch_data.py` ekler |
+| `patches/apk_overlay/` | Değiştirilmiş smali + manifest (derlemede `apk_smali/` üstüne kopyalanır) |
 | `scripts/patch_data.py` | Eksik veri: `common` (max_stage_level/max_challenge), 67 metin, `*_global.xml`, `language_table` |
 | `scripts/build.sh` | Hepsini derler: lib yaması + Java sunucu (d8 ile `classes.dex`'e eklenir) + imza → `build/pw2.apk` |
 | `scripts/save.sh` | Kayıt dışa/içe aktarma (`adb forward` → oyunun `/pw2/admin/save` adresi, sadece cihazın içinden erişilir) |
