@@ -18,7 +18,7 @@ fi
 # 2) emulator (reuse a running one)
 if ! "$ADB" get-state >/dev/null 2>&1; then
     notify "Starting..."
-    nohup "$EMU" -avd pw2 -gpu "$GPU" -no-boot-anim -no-audio -feature -Vulkan > "$LOG" 2>&1 &
+    nohup "$EMU" -avd pw2 -gpu "$GPU" -no-boot-anim -feature -Vulkan > "$LOG" 2>&1 &
     EMU_PID=$!
     "$ADB" wait-for-device
     until [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do
