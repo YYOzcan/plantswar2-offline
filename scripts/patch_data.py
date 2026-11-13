@@ -3,6 +3,7 @@ import sys
 sys.path.insert(0, '/home/yigit/pw2/server'); sys.path.insert(0, '/home/yigit/pw2/patches')
 import pw2crypto
 from extra_strings import EXTRA
+import restored_strings, glob, re, html
 from xml.sax.saxutils import quoteattr
 SRC = '/home/yigit/pw2/apk/assets/Common/'
 DST = '/home/yigit/pw2/apk_smali/assets/Common/'
@@ -14,10 +15,26 @@ def patch(rel, fn):
     open(DST + rel, 'w').write(pw2crypto.encode(prefix + xml2.encode('utf-8')))
     print('patched', rel)
 
+def original_tables():
+    t = {}
+    for p in sorted(glob.glob(SRC + 'String/*.x')):
+        plain, ok = pw2crypto.decode(open(p, 'rb').read())
+        for m in re.finditer(r'<string\s+([^>]*?)/?>', plain[4:].decode('utf-8', 'replace')):
+            a = {k: html.unescape(v) for k, v in re.findall(r'(\w+)\s*=\s*"([^"]*)"', m.group(1))}
+            if 'id' in a: t[a.pop('id')] = a
+    return t
+
 def strings(xml):
-    add = ''.join(f'\t<string id="{k}" ' + ' '.join(f'{l}={quoteattr(v)}' for l in ('kor','eng','chn_sc','chn_tw','jpn','tha')) + '/>\r\n'
-                  for k, v in EXTRA.items())
-    return xml.replace('</string_table>', add + '</string_table>')
+    LANGS = restored_strings.LANGS
+    add = {k: {l: v for l in LANGS} for k, v in EXTRA.items()}
+    tables = original_tables()
+    tables.update(add)
+    for k, cols in restored_strings.build(tables).items():
+        add[k] = {l: cols.get(l) or cols.get('eng', '') for l in LANGS}
+    print(f'  +{len(add)} strings')
+    rows = ''.join(f'\t<string id="{k}" ' + ' '.join(f'{l}={quoteattr(c[l])}' for l in LANGS) + '/>\r\n'
+                   for k, c in add.items())
+    return xml.replace('</string_table>', rows + '</string_table>')
 
 COMMON_EXTRA = {"max_stage_level": 5, "max_challenge": 40}
 def common(xml):

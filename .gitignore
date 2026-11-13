@@ -28,3 +28,7 @@ glshim/gen.inc
 tomb.txt
 libGame.strings
 __pycache__/
+offline/classes/
+build/.installed
+test/tour/
+saves/

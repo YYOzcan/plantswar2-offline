@@ -1,25 +1,53 @@
 # Plants War 2 — Offline Restorasyon
 
-Kapanmış sunucuları olan *Plants War 2* (com.ftt.pw2.global.gl 1.0.6) PC'de, tamamen çevrimdışı.
+Sunucuları kapanmış *Plants War 2* (com.ftt.pw2.global.gl 1.0.6), tamamen çevrimdışı.
+**Oyun sunucusu APK'nın içinde**: oyun açılınca cihazın kendi `127.0.0.1` adresinde çalışıyor.
+Aynı `build/pw2.apk` telefonda, tablette ve PC emülatöründe internetsiz çalışır.
 
-## Oynamak
-- Uygulama menüsünde **Plants War 2** ya da `~/pw2/play.sh`
-  (sunucu + Android emülatörü (RTX, host GPU) + oyun açılır; pencere kapanınca sunucu da kapanır).
+## Telefona / tablete kurmak
+1. `build/pw2.apk` dosyasını telefona at (USB, Drive, Telegram... ne olursa).
+2. Dosyaya dokun, "bilinmeyen kaynaklardan yükleme" iznini ver, kur.
+   Play Protect uyarırsa: *Ayrıntılar → Yine de yükle*.
+3. Bitti. İnternet, hesap, ek uygulama gerekmez. Kayıt telefonun içinde tutulur.
+
+Gereksinim: Android 5+ ve **32-bit ARM uygulamalarını çalıştırabilen** bir cihaz
+(oyunun motoru 32-bit, kaynak kodu yok). Galaxy A52 dahil çoğu telefon olur;
+yalnızca 64-bit çalışan yeni cihazlarda (ör. Pixel 7 ve sonrası) kurulmaz.
+
+## PC'de oynamak
+- Uygulama menüsünde **Plants War 2** ya da `~/pw2/play.sh` (Android emülatörü, RTX/host GPU).
+  APK değiştiyse emülatördeki oyunu kendisi günceller; kayıt korunur.
 - Grafik sorunu olursa: `PW2_GPU=swiftshader_indirect ~/pw2/play.sh`
-- Kayıt: `server/save/save.json` (yedeklemek için bu dosyayı kopyala).
+
+## Kayıt yedekleme / taşıma (PC ↔ telefon)
+Oyun açıkken, cihaz USB hata ayıklama (ya da emülatör) ile bağlıyken:
+```
+scripts/save.sh export                 # -> saves/pw2-save-<tarih>.json
+scripts/save.sh import <dosya.json>    # sonra oyunu kapatıp aç
+```
+Birden fazla cihaz bağlıysa: `ANDROID_SERIAL=<seri> scripts/save.sh ...`
+Kaydı başka cihaza taşırken: önce yeni cihazda oyunu bir kez açıp misafir hesabı oluştur,
+sonra import et (hesap numarası aynı olur: ilk hesap hep 1001).
+
+## Para birimleri
+Satın alma yok, bu yüzden Altın / Leaf / Anahtar / Taç **999999**; her girişte tekrar 999999'a doldurulur.
 
 ## Bileşenler
 | Parça | Ne yapar |
 |---|---|
-| `server/pw2server.py` | UDW (10030), notice (10015), ending (10005), CDN (10080), oyun sunucusu (12380) |
-| `server/pw2crypto.py` | Oyunun `Encoder/Decoder` şifresi (istek `PD=`, cevaplar, `.x` veri dosyaları) |
-| `server/handlers.py` | `action.php`/`login.php` içindeki ~110 `act` için XML cevapları + oyuncu durumu |
+| `offline/src/pw2/offline/` | **APK içindeki sunucu** (Java, Android API'si kullanmaz): HTTP, şifre, ~110 `act`, JSON kayıt |
+| `apk_smali` yamaları | `GameActivity.onCreate` → `OfflineServer.start`; XIGNCODE kapalı; targetSdk 24 (Android 15+ kurulum için) |
+| `server/` | Aynı sunucunun Python hâli (geliştirme/referans): `pw2server.py`, `pw2crypto.py`, `handlers.py` |
+| `offline/test/replay.py` | Fark testi: kayıtlı gerçek istekleri Python ve Java sunucusundan geçirip cevap + kaydı karşılaştırır |
 | `glshim/` | `libpw2gl.so`: GLES1 araya girici; matris yığınlarını takip edip `glGetFloatv(MODELVIEW/PROJECTION)` cevaplar (emülatörde harita/obje kaybolmasını düzeltir) |
-| `scripts/patch_lib.py` | `libGame.so`: sunucu adresleri → `10.0.2.2`, `libGLESv1_CM.so` → `libpw2gl.so` |
+| `scripts/patch_lib.py` | `libGame.so`: sunucu adresleri → `127.0.0.1`, `libGLESv1_CM.so` → `libpw2gl.so` |
 | `scripts/patch_data.py` | Eksik veri: `common` (max_stage_level/max_challenge), 67 metin, `*_global.xml`, `language_table` |
-| `apk_smali` yaması | XIGNCODE kapalı |
-| `scripts/build.sh` | APK'yı yeniden derler/imzalar → `build/pw2.apk` |
+| `scripts/build.sh` | Hepsini derler: lib yaması + Java sunucu (d8 ile `classes.dex`'e eklenir) + imza → `build/pw2.apk` |
+| `scripts/save.sh` | Kayıt dışa/içe aktarma (`adb forward` → oyunun `/pw2/admin/save` adresi, sadece cihazın içinden erişilir) |
+
+Geliştirme: `PW2_HOST=10.0.2.2 scripts/build.sh` → emülatörde PC'deki Python sunucusunu kullanan APK.
+Sunucu loglarını görmek: `adb shell setprop debug.pw2 1` (oyunu yeniden aç) → `adb logcat -s PW2Server`.
 
 ## Bilinen sınırlamalar
-- Gerçek parayla Leaf satın alma (Google Play) çalışmaz; arkadaş/Facebook/Google Play özellikleri devre dışı.
+- Arkadaş / Facebook / Google Play özellikleri devre dışı.
 - PvP / Arena rakipleri oyunun kendi ürettiği botlardır.

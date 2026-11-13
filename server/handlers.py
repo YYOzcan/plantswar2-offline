@@ -33,7 +33,8 @@ RES_FIELDS = {  # server item type -> LoadResource element (act 89)
     36: "enchant_2", 37: "enchant_3", 38: "enchant_4",
     51: "unit_1_t", 52: "unit_2_t", 61: "parts_1_t", 62: "parts_2_t", 63: "armor_1_t", 64: "armor_2_t",
 }
-START_RES = {"gold": 3000, "iap": 30, "key": 5, "pcoin": 0, "hp_p": 3, "mp_p": 3, "cool_p": 1,
+CURRENCIES, CURRENCY_FULL = ("gold", "iap", "key", "pcoin"), 999999   # purchases are gone: keep these topped up
+START_RES = {"gold": CURRENCY_FULL, "iap": CURRENCY_FULL, "key": CURRENCY_FULL, "pcoin": CURRENCY_FULL, "hp_p": 3, "mp_p": 3, "cool_p": 1,
              "return_s": 1, "rebirth_s": 1}
 STAMINA_MAX, STAMINA_REGEN = 30, 300     # action points, seconds per point
 FLAG_ACT8 = {1: "tutorial", 2: "pvp", 3: "arena", 4: "challenge", 5: "superman", 10: "review"}
@@ -182,6 +183,8 @@ def act_22(a, g):  # Login
     x += [f'<superman_chk>0</superman_chk>', '<crm_chk>0</crm_chk>', f'<review>{fl.get("review", 0)}</review>',
           f'<last_hero>{u["hero_type"] if u["heroes"] else 0}</last_hero>', '<alarm>3</alarm>',
           '<pvp_result>0</pvp_result>', '<win_restore>0</win_restore>']
+    for c in CURRENCIES:                        # refill gold / leaf / key / crown on every login
+        if int(u["res"].get(c, 0)) < CURRENCY_FULL: u["res"][c] = CURRENCY_FULL
     u["last_login"] = now(); state.save()
     return "".join(x)
 
