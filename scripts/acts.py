@@ -1,5 +1,6 @@
 import re
-src=open('/home/yigit/pw2/libGame_res.c').read()
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+src=open(ROOT + '/libGame_res.c').read()
 parts=re.split(r'(?m)^// ==== ',src)
 out=[]
 for p in parts:

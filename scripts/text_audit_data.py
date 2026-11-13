@@ -1,7 +1,8 @@
 """Data-table attributes that hold text ids: report values with no string-table entry."""
 import sys, os, re, glob
-sys.path.insert(0, os.path.expanduser('~/pw2/server')); import pw2crypto
-R = os.path.expanduser('~/pw2/apk_smali/assets/Common/')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/server'); import pw2crypto
+R = ROOT + '/apk_smali/assets/Common/'
 def dec(p):
     x, ok = pw2crypto.decode(open(p, 'rb').read()); return x[4:].decode('utf-8', 'replace')
 have = set()

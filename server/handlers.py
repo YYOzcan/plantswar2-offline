@@ -77,14 +77,10 @@ def cur_hero_type(u, g):
 # starter kit per hero type: (weapon, hat, hand) part indexes from parts_<hero>.xml, first skill
 STARTER = {1: ((30000, 32000, 31000), "stonefall"),
            2: ((40000, 42000, 41000), "icespike"),
-           3: ((50000, 52000, 51000), None)}
+           3: ((50000, 52000, 51000), "poisonshot")}   # first skill of each class in hero_skill.xml
 
 def _starter_skill(t):
-    if STARTER[t][1]: return STARTER[t][1]
-    import re, os
-    x = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "gamedata", "hero_skill.xml"), encoding="utf-8").read()
-    blk = x.split('<hero name = "archer">')[1]
-    return re.search(r'name = "([a-z_]+)"', blk).group(1)
+    return STARTER[t][1]
 
 def hero(u, t):
     t = str(t)

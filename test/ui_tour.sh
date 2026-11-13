@@ -1,6 +1,6 @@
 #!/bin/bash
 # Visit the lobby screens (1920x1080 emulator), screenshot each, then list missing text ids (PW2Text).
-cd ~/pw2; A=android-sdk/platform-tools/adb; OUT=${1:-test/tour}; mkdir -p $OUT
+. "$(dirname "$0")/../scripts/env.sh"; cd "$PW2"; A="$ADB"; OUT=${1:-test/tour}; mkdir -p $OUT
 tap() { timeout 10 $A shell input tap $1 $2; sleep ${3:-3}; }
 shot() { timeout 15 $A exec-out screencap -p > $OUT/$1.png; }
 back() { timeout 10 $A shell input keyevent 4; sleep 2; }

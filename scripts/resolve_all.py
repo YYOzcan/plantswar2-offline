@@ -1,5 +1,6 @@
 import sys, re
-sys.path.insert(0, '/home/yigit/pw2/scripts')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/scripts')
 import res
 src = open(sys.argv[1], encoding='latin1').read()
 def ok(r): return r and all(32 <= ord(c) < 127 for c in r)

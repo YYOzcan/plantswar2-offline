@@ -32,3 +32,6 @@ offline/classes/
 build/.installed
 test/tour/
 saves/
+server/gamedata/
+play.out
+shot*.png

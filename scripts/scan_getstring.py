@@ -1,8 +1,9 @@
 """Find literal text ids passed to StringManager::GetString (whole-binary thumb disassembly, PIC strings resolved)."""
 import sys, re, subprocess
-sys.path.insert(0, '/home/yigit/pw2/scripts')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/scripts')
 import res
-LIB = '/home/yigit/pw2/apk/lib/armeabi-v7a/libGame.so'
+LIB = ROOT + '/apk/lib/armeabi-v7a/libGame.so'
 TARGETS = {0x11aaf0 - 0x10000}           # StringManager::GetString(std::string)
 out = subprocess.run(['llvm-objdump', '-d', '--triple=thumbv7-linux-androideabi', '--no-show-raw-insn', '-j', '.text', LIB],
                      capture_output=True, text=True).stdout

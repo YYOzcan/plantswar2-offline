@@ -5,7 +5,7 @@
 # The game must be running (its built-in server answers on the device's 127.0.0.1:12380).
 set -e
 PW2="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
-ADB="${ADB:-$PW2/android-sdk/platform-tools/adb}"
+. "$PW2/scripts/env.sh"
 PORT=12381
 "$ADB" forward tcp:$PORT tcp:12380 >/dev/null
 trap '"$ADB" forward --remove tcp:$PORT >/dev/null 2>&1' EXIT

@@ -1,5 +1,6 @@
 import sys, re
-txt = open('/home/yigit/pw2/nm_res.c').read().split('\n')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+txt = open(ROOT + '/nm_res.c').read().split('\n')
 want = [int(x, 0) for x in sys.argv[1:]]
 # find "case N:" lines at the switch indentation (8 spaces)
 idx = {}

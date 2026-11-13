@@ -1,6 +1,7 @@
 # usage: res.py DAT_addr+offset ...  -> resolves PIC string refs in libGame.so
 import struct, sys, re
-d = open('/home/yigit/pw2/apk/lib/armeabi-v7a/libGame.so','rb').read()
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+d = open(ROOT + '/apk/lib/armeabi-v7a/libGame.so','rb').read()
 phoff = struct.unpack_from('<I', d, 0x1c)[0]; phnum = struct.unpack_from('<H', d, 0x2c)[0]
 segs = []
 for i in range(phnum):

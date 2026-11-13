@@ -1,10 +1,11 @@
 # usage: asm.py 'Class::Func' [grep]  -> thumb disassembly with PIC string refs resolved
 import sys, re, subprocess
-sys.path.insert(0, '/home/yigit/pw2/scripts')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/scripts')
 import res
-LIB = '/home/yigit/pw2/apk/lib/armeabi-v7a/libGame.so'
+LIB = ROOT + '/apk/lib/armeabi-v7a/libGame.so'
 B = 0x10000
-heads = re.findall(r'(?m)^// ==== (.+?) @ ([0-9a-f]+)$', open('/home/yigit/pw2/full.c').read())
+heads = re.findall(r'(?m)^// ==== (.+?) @ ([0-9a-f]+)$', open(ROOT + '/full.c').read())
 addrs = sorted(int(a, 16) for _, a in heads)
 name = sys.argv[1]
 start = next(int(a, 16) for n, a in heads if n == name) - B

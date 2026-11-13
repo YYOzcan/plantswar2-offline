@@ -1,6 +1,6 @@
 """Differential test: replay recorded client requests through the Python server and the Java port."""
 import sys, os, re, json, subprocess, shutil, urllib.parse
-ROOT = os.path.expanduser("~/pw2")
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 sys.path.insert(0, ROOT + "/server")
 OUT = sys.argv[1]
 reqs = []
@@ -30,7 +30,7 @@ for p in reqs:
         parts.append(f'<act v="{a.get("act")}">{x or ""}</act>')
     py.append("<result><msg>1</msg>" + "".join(parts) + "</result>")
 
-J = ROOT + "/tools/jdk-21.0.13+9/bin/java"
+J = "java"
 jv = subprocess.run([J, "-cp", f"{ROOT}/offline/classes:{OUT}/tcls", "pw2.offline.Replay", f"{OUT}/reqs.txt", f"{OUT}/java"],
                     capture_output=True, text=True, encoding="utf-8").stdout.splitlines()
 jv = [l for l in jv if l.startswith("<result>")]

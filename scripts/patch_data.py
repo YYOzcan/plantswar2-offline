@@ -1,12 +1,13 @@
 """Re-encrypt game data tables with the additions that used to come from server-side updates."""
 import sys
-sys.path.insert(0, '/home/yigit/pw2/server'); sys.path.insert(0, '/home/yigit/pw2/patches')
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/server'); sys.path.insert(0, ROOT + '/patches')
 import pw2crypto
 from extra_strings import EXTRA
 import restored_strings, glob, re, html
 from xml.sax.saxutils import quoteattr
-SRC = '/home/yigit/pw2/apk/assets/Common/'
-DST = '/home/yigit/pw2/apk_smali/assets/Common/'
+SRC = ROOT + '/apk/assets/Common/'
+DST = ROOT + '/apk_smali/assets/Common/'
 
 def patch(rel, fn):
     plain, ok = pw2crypto.decode(open(SRC + rel, 'rb').read()); assert ok, rel

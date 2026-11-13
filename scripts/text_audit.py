@@ -1,8 +1,8 @@
 """List text ids the client may ask StringManager::GetString for that no string table defines."""
 import sys, os, re, glob
-sys.path.insert(0, os.path.expanduser('~/pw2/server'))
+import os as _os; ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+sys.path.insert(0, ROOT + '/server')
 import pw2crypto
-ROOT = os.path.expanduser('~/pw2')
 def dec(p):
     plain, ok = pw2crypto.decode(open(p, 'rb').read()); return plain[4:].decode('utf-8', 'replace')
 have = set()
