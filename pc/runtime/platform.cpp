@@ -22,7 +22,12 @@ uint32_t jni_env();
 uint32_t jni_new_string(const std::string &s);
 uint32_t jni_instance(const char *cls);
 uint32_t jni_native(const char *cls, const char *method, uint32_t thiz, std::initializer_list<uint32_t> args);
-std::string host_path(const char *p) { return p ? std::string(p) : std::string(); }
+std::string host_path(const char *p) {        // relative guest paths (cwd = "/" on Android) go to the data dir
+    if (!p || !*p) return std::string();
+    std::string s = p;
+    bool abs = s[0] == '/' || s[0] == '\\' || (s.size() > 1 && s[1] == ':');
+    return abs ? s : data_dir + "/" + s;
+}
 }  // namespace rt
 using namespace rt;
 
