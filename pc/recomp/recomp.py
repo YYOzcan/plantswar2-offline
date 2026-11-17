@@ -594,9 +594,11 @@ class Gen:
             o.append(f"  F_{(i.address + 4) & ~3:08x}(c); return;"); return
         if iid == A.ARM_INS_BX and i.address in self.fn.bxswitch:
             ri, targets = self.fn.bxswitch[i.address]
-            o.append(f"  switch ({self.R(ri)}) {{")
-            for k, t in enumerate(targets): o.append(f"    case {k}: goto L_{t:x};")
-            o.append(f"    default: call_addr(c, {self.R(i.reg_name(ops[0].reg))}); return;\n  }}")
+            # dispatch on the computed target, not the index register: the table load may reuse it (ldr r1,[r0,r1,lsl #2])
+            tr = self.R(i.reg_name(ops[0].reg))
+            o.append(f"  switch (({tr} - BASE) & ~1u) {{")
+            for t in sorted(set(targets)): o.append(f"    case 0x{t:x}u: goto L_{t:x};")
+            o.append(f"    default: call_addr(c, {tr}); return;\n  }}")
             return
         vt = veneer_target(self.fn.insns, i) if not self.thumb else None
         if vt is not None:

@@ -36,7 +36,12 @@ IMP(glOrthox) { glOrtho(X(0), X(1), X(2), X(3), X(4), X(5)); }
 IMP(glGenTextures) { glGenTextures(A(0), (GLuint *)GPTR(A(1))); }
 IMP(glGetError) { c->r[0] = glGetError(); }
 IMP(glGetFloatv) { glGetFloatv(A(0), (GLfloat *)GPTR(A(1))); }
-IMP(glGetIntegerv) { glGetIntegerv(A(0), (GLint *)GPTR(A(1))); }
+// The game renders into a 16:9 area centred in the window (platform.cpp): shift its viewport/scissor there.
+int g_view_x, g_view_y;   // bottom-left of the game area in window pixels (GL coordinates)
+IMP(glGetIntegerv) {
+    GLint *p = (GLint *)GPTR(A(1)); glGetIntegerv(A(0), p);
+    if (A(0) == GL_VIEWPORT || A(0) == GL_SCISSOR_BOX) { p[0] -= g_view_x; p[1] -= g_view_y; }
+}
 IMP(glHint) { glHint(A(0), A(1)); }
 IMP(glLightfv) { glLightfv(A(0), A(1), (const GLfloat *)GPTR(A(2))); }
 IMP(glLightxv) { const int32_t *p = (const int32_t *)GPTR(A(2)); float f[4]; for (int k = 0; k < 4; k++) f[k] = p[k] / 65536.0f; glLightfv(A(0), A(1), f); }
@@ -57,7 +62,7 @@ IMP(glScalef) { glScalef(F(0), F(1), F(2)); }
 IMP(glScalex) { glScalef(X(0), X(1), X(2)); }
 IMP(glTranslatef) { glTranslatef(F(0), F(1), F(2)); }
 IMP(glTranslatex) { glTranslatef(X(0), X(1), X(2)); }
-IMP(glScissor) { glScissor(A(0), A(1), A(2), A(3)); }
+IMP(glScissor) { glScissor((int32_t)A(0) + g_view_x, (int32_t)A(1) + g_view_y, A(2), A(3)); }
 IMP(glShadeModel) { glShadeModel(A(0)); }
 IMP(glStencilFunc) { glStencilFunc(A(0), A(1), A(2)); }
 IMP(glStencilOp) { glStencilOp(A(0), A(1), A(2)); }
@@ -70,7 +75,7 @@ IMP(glTexParameteri) { glTexParameteri(A(0), A(1), A(2)); }
 IMP(glTexParameterx) { glTexParameteri(A(0), A(1), A(2)); }     // enum-valued params are passed unscaled
 IMP(glTexParameterf) { glTexParameterf(A(0), A(1), F(2)); }
 IMP(glVertexPointer) { glVertexPointer(A(0), A(1), A(2), GPTR(A(3))); }
-IMP(glViewport) { glViewport(A(0), A(1), A(2), A(3)); }
+IMP(glViewport) { glViewport((int32_t)A(0) + g_view_x, (int32_t)A(1) + g_view_y, A(2), A(3)); }
 IMP(glPixelStorei) { glPixelStorei(A(0), A(1)); }
 IMP(glAlphaFunc) { glAlphaFunc(A(0), F(1)); }
 IMP(glColorMask) { glColorMask(A(0), A(1), A(2), A(3)); }

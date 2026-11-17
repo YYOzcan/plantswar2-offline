@@ -9,6 +9,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shlobj.h>
+#include <mmsystem.h>
 #include <sys/stat.h>
 #include <io.h>
 #else
@@ -248,6 +249,7 @@ void redirect_stderr(const std::string &path) {
 }
 void sleep_ms(int ms) {
 #ifdef _WIN32
+    static bool fine = (timeBeginPeriod(1), true); (void)fine;   // 1 ms timer resolution for the frame limiter
     Sleep(ms);
 #else
     usleep(ms * 1000);

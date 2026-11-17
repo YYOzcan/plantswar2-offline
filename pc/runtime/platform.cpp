@@ -8,6 +8,7 @@
 #include <mutex>
 #include <algorithm>
 #include <map>
+#include <cmath>
 #include <atomic>
 
 #define DR_WAV_IMPLEMENTATION
@@ -187,6 +188,7 @@ static void draw_keyboard_overlay(int w, int h) {
     GLint old_tex = 0, old_mode = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &old_tex); glGetIntegerv(GL_MATRIX_MODE, &old_mode);
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+    glViewport(0, 0, w, h); glDisable(GL_SCISSOR_TEST);
     glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0, w, h, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
     glDisable(GL_DEPTH_TEST); glDisable(GL_LIGHTING); glDisable(GL_CULL_FACE); glEnable(GL_BLEND);
@@ -215,7 +217,9 @@ static void draw_keyboard_overlay(int w, int h) {
 // ======================================================================= game lifecycle
 namespace {
 uint32_t o_view, o_renderer, o_kb, o_sound, o_text, o_fm, o_df;
-void touch(int phase, float x, float y) {
+int GX, GY, GW = 1280, GH = 720;            // game area inside the window (top-left origin), always 16:9
+void touch(int phase, float x, float y) {   // x, y: window pixels
+    x -= GX; y -= GY;
     uint32_t fx, fy; memcpy(&fx, &x, 4); memcpy(&fy, &y, 4);
     jni_native("GameGLSurfaceView", "nativeDefaultTouchStart", o_view, {(uint32_t)phase});
     jni_native("GameGLSurfaceView", "nativeDefaultTouch", o_view, {fx, fy});
@@ -267,6 +271,88 @@ void save_ppm(const std::string &path, int w, int h) {
 }
 }  // namespace
 
+// LoL-style battle hotkeys. Button centres as fractions of the game area (always 16:9, see GX/GW).
+namespace {
+const uint32_t SCENE_MANAGER = 0x400fa0, SCENE_BATTLE = 0xf;   // SceneManager object in libGame .bss; +0x24 = scene type
+struct Hotkey { SDL_Keycode key; bool ctrl; float x, y; const char *label; float bx, by; };   // bx,by: badge offset
+const Hotkey HOTKEYS[] = {
+    // skills (Ctrl = level up with the "+" above the skill, like LoL)
+    {SDLK_q, false, 0.625f, 0.878f, "Q", 0.030f, -0.060f}, {SDLK_w, false, 0.741f, 0.878f, "W", 0.030f, -0.060f},
+    {SDLK_e, false, 0.845f, 0.878f, "E", 0.030f, -0.060f}, {SDLK_r, false, 0.948f, 0.878f, "R", 0.030f, -0.060f},
+    {SDLK_q, true, 0.625f, 0.750f, nullptr, 0, 0}, {SDLK_w, true, 0.741f, 0.750f, nullptr, 0, 0},
+    {SDLK_e, true, 0.845f, 0.750f, nullptr, 0, 0}, {SDLK_r, true, 0.948f, 0.750f, nullptr, 0, 0},
+    // potions / items
+    {SDLK_1, false, 0.047f, 0.917f, "1", 0.024f, -0.048f}, {SDLK_2, false, 0.125f, 0.917f, "2", 0.024f, -0.048f},
+    {SDLK_3, false, 0.205f, 0.917f, "3", 0.024f, -0.048f}, {SDLK_4, false, 0.283f, 0.917f, "4", 0.024f, -0.048f},
+    // left column: summon minion, target, camera
+    {SDLK_d, false, 0.053f, 0.328f, "D", 0.030f, -0.042f}, {SDLK_f, false, 0.053f, 0.486f, "F", 0.030f, -0.042f},
+    {SDLK_SPACE, false, 0.053f, 0.617f, "Space", 0.036f, -0.042f},
+    // top right: game speed, pause
+    {SDLK_x, false, 0.883f, 0.061f, "X", -0.030f, 0.045f}, {SDLK_p, false, 0.955f, 0.061f, "P", 0.012f, 0.050f},
+};
+uint32_t scene_type() { return R32(BASE + SCENE_MANAGER + 0x24); }
+bool hotkey_pos(SDL_Keycode k, bool ctrl, int W, int H, float &px, float &py) {
+    (void)W; (void)H;
+    for (auto &h : HOTKEYS) {
+        if (h.key != k || h.ctrl != ctrl) continue;
+        px = GX + h.x * GW; py = GY + h.y * GH;           // fractions of the (fixed 16:9) game area
+        return true;
+    }
+    return false;
+}
+
+// small key badges over the battle HUD, in the game's own colours (dark wood + gold rim)
+struct Badge { GLuint tex = 0; int w = 0, h = 0; };
+std::map<std::string, Badge> badges;
+void draw_badges(int W, int H) {
+    if (scene_type() != SCENE_BATTLE) return;
+    GLint old_tex = 0, old_mode = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &old_tex); glGetIntegerv(GL_MATRIX_MODE, &old_mode);
+    glPushAttrib(GL_ALL_ATTRIB_BITS); glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+    glViewport(GX, H - GY - GH, GW, GH); glDisable(GL_SCISSOR_TEST);
+    glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0, GW, GH, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
+    glDisable(GL_DEPTH_TEST); glDisable(GL_LIGHTING); glDisable(GL_CULL_FACE); glDisable(GL_FOG); glDisable(GL_ALPHA_TEST);
+    glDisableClientState(GL_VERTEX_ARRAY); glDisableClientState(GL_TEXTURE_COORD_ARRAY); glDisableClientState(GL_COLOR_ARRAY);
+    glEnable(GL_BLEND);
+    const float r = GH * 0.024f;                            // badge radius (~17 px at 720p)
+    for (auto &h : HOTKEYS) {
+        if (!h.label) continue;
+        Badge &b = badges[h.label];
+        if (!b.tex) {
+            std::vector<uint8_t> px = plat::text_string(h.label, 26, 0, 1, 0, -1, 1, b.w, b.h);
+            glGenTextures(1, &b.tex); glBindTexture(GL_TEXTURE_2D, b.tex);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, b.w, b.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, px.data());
+        }
+        float cx = (h.x + h.bx) * GW, cy = (h.y + h.by) * GH;
+        float th = r * 1.25f, tw = th * b.w / (float)b.h;  // text box
+        float half = std::max(0.f, tw / 2 - r * 0.55f);    // pill for long labels ("Space")
+        glDisable(GL_TEXTURE_2D); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        for (int pass = 0; pass < 2; pass++) {              // gold rim, then dark wood fill
+            float rr = pass ? r * 0.80f : r;
+            if (pass) glColor4f(0.23f, 0.13f, 0.06f, 0.92f); else glColor4f(0.96f, 0.76f, 0.27f, 0.95f);
+            glBegin(GL_TRIANGLE_FAN); glVertex2f(cx, cy);
+            for (int k = 0; k <= 32; k++) {
+                float a = k * 6.2831853f / 32, dx = cosf(a) * rr, dy = sinf(a) * rr;
+                glVertex2f(cx + dx + (dx >= 0 ? half : -half), cy + dy);
+            }
+            glEnd();
+            if (half > 0) { glBegin(GL_QUADS); glVertex2f(cx - half, cy - rr); glVertex2f(cx + half, cy - rr); glVertex2f(cx + half, cy + rr); glVertex2f(cx - half, cy + rr); glEnd(); }
+        }
+        glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, b.tex);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); glColor4f(1.0f, 0.95f, 0.80f, 1.0f);
+        float x0 = cx - tw / 2, y0 = cy - th / 2;
+        glBegin(GL_QUADS);
+        glTexCoord2f(0, 0); glVertex2f(x0, y0); glTexCoord2f(1, 0); glVertex2f(x0 + tw, y0);
+        glTexCoord2f(1, 1); glVertex2f(x0 + tw, y0 + th); glTexCoord2f(0, 1); glVertex2f(x0, y0 + th);
+        glEnd();
+    }
+    glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix();
+    glPopClientAttrib(); glPopAttrib();
+    glBindTexture(GL_TEXTURE_2D, old_tex); glMatrixMode(old_mode);
+}
+}  // namespace
+
 static std::string find_apk(const std::string &dir, int argc, char **argv) {
     if (argc > 1) return argv[1];
     std::vector<uint8_t> probe;                                   // single-file build: the executable is the APK
@@ -305,6 +391,7 @@ int main(int argc, char **argv) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2); SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16); SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     int W = 1280, H = 720;
+    if (const char *ws = getenv("PW2_WINDOW")) sscanf(ws, "%dx%d", &W, &H);
     SDL_Window *win = SDL_CreateWindow("Plants War 2", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, W, H,
                                        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!win) fatal("window: %s", SDL_GetError());
@@ -360,7 +447,7 @@ int main(int argc, char **argv) {
     SDL_GL_GetDrawableSize(win, &W, &H);
     bool resized = true, running = true, down = false;
     parse_script();
-    long frame = 0;
+    long frame = 0; int64_t next_frame = 0; bool show_badges = !getenv("PW2_NO_BADGES");
     while (running) {
         frame++;
         if (const char *ctl = getenv("PW2_CTL")) {         // interactive test channel: "tap x y" / "shot file" / "text s" / "back" / "quit"
@@ -379,14 +466,22 @@ int main(int argc, char **argv) {
         for (size_t si = 0; si < script.size(); si++) {
             Step st = script[si];
             if (st.frame != frame) continue;
-            if (st.op == "tap") { touch(0, st.x * W, st.y * H); script.push_back(Step{frame + 4, "up", st.x, st.y, ""}); }
-            else if (st.op == "up") touch(2, st.x * W, st.y * H);
+            if (st.op == "tap") { touch(0, GX + st.x * GW, GY + st.y * GH); script.push_back(Step{frame + 4, "up", st.x, st.y, ""}); }
+            else if (st.op == "up") touch(2, GX + st.x * GW, GY + st.y * GH);
+            else if (st.op == "uppx") touch(2, st.x, st.y);
+            else if (st.op == "key") { SDL_Event ke{}; ke.type = SDL_KEYDOWN; ke.key.keysym.sym = SDL_GetKeyFromName(st.arg.c_str()); SDL_PushEvent(&ke); }
             else if (st.op == "shot") save_ppm(st.arg, W, H);
             else if (st.op == "back") jni_native("GameGLSurfaceView", "nativeDefaultBack", o_view, {});
             else if (st.op == "text") { kb_active = false; jni_keyboard_done(st.arg); }
             else if (st.op == "quit") running = false;
+            else if (st.op == "peek") {                    // "peek <hex guest addr> <words>"
+                unsigned a = 0, n = 8; sscanf(st.arg.c_str(), "%x %u", &a, &n);
+                std::string out; char b[32];
+                for (unsigned k = 0; k < n; k++) { uint32_t v = R32(a + 4 * k); float f; memcpy(&f, &v, 4); snprintf(b, sizeof b, " %08x(%g)", v, f); out += b; }
+                logf("peek %08x:%s", a, out.c_str());
+            }
         }
-        SDL_Event e;
+        SDL_Event e; float hx = 0, hy = 0;
         while (SDL_PollEvent(&e)) {
             switch (e.type) {
             case SDL_QUIT: running = false; break;
@@ -397,8 +492,9 @@ int main(int argc, char **argv) {
                 if (kb_active) break;
                 int ww, wh; SDL_GetWindowSize(win, &ww, &wh);
                 float sx = (float)W / ww, sy = (float)H / wh;
-                if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) { down = true; touch(0, e.button.x * sx, e.button.y * sy); }
-                else if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT && down) { down = false; touch(2, e.button.x * sx, e.button.y * sy); }
+                bool btn = e.type != SDL_MOUSEMOTION && (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_RIGHT);
+                if (e.type == SDL_MOUSEBUTTONDOWN && btn) { down = true; touch(0, e.button.x * sx, e.button.y * sy); }   // right click = move too (LoL)
+                else if (e.type == SDL_MOUSEBUTTONUP && btn && down) { down = false; touch(2, e.button.x * sx, e.button.y * sy); }
                 else if (e.type == SDL_MOUSEMOTION && down) touch(1, e.motion.x * sx, e.motion.y * sy);
                 break;
             }
@@ -412,6 +508,11 @@ int main(int argc, char **argv) {
                     } else if (e.key.keysym.sym == SDLK_ESCAPE) { kb_active = false; SDL_StopTextInput(); }
                 } else if (e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_AC_BACK) {
                     jni_native("GameGLSurfaceView", "nativeDefaultBack", o_view, {});
+                } else if (!e.key.repeat && scene_type() == SCENE_BATTLE &&
+                           hotkey_pos(e.key.keysym.sym, (e.key.keysym.mod & KMOD_CTRL) != 0, W, H, hx, hy)) {
+                    touch(0, hx, hy); script.push_back(Step{frame + 3, "uppx", hx, hy, ""});
+                } else if (e.key.keysym.sym == SDLK_F1) {
+                    show_badges = !show_badges;                 // F1: show/hide the key badges
                 } else if (e.key.keysym.sym == SDLK_F11) {
                     bool fs = SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN_DESKTOP;
                     SDL_SetWindowFullscreen(win, fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -421,10 +522,32 @@ int main(int argc, char **argv) {
         }
         if (music_ended.exchange(false)) jni_music_end();
         deliver_downloads();
-        if (resized) { jni_native("GameRenderer", "nativeDefaultResize", o_renderer, {(uint32_t)W, (uint32_t)H}); resized = false; }
+        if (resized) {                                   // letter/pillar-box to 16:9 like the phone: stable HUD layout
+            if ((long)W * 9 > (long)H * 16) { GH = H; GW = H * 16 / 9; } else { GW = W; GH = W * 9 / 16; }
+            GX = (W - GW) / 2; GY = (H - GH) / 2;
+            extern int g_view_x, g_view_y; g_view_x = GX; g_view_y = H - GY - GH;
+            jni_native("GameRenderer", "nativeDefaultResize", o_renderer, {(uint32_t)GW, (uint32_t)GH}); resized = false;
+        }
         else jni_native("GameRenderer", "nativeDefaultStep", o_renderer, {});
+        if (GX || GY) {                                   // black bars around the game area
+            glPushAttrib(GL_COLOR_BUFFER_BIT | GL_SCISSOR_BIT);
+            glEnable(GL_SCISSOR_TEST); glClearColor(0, 0, 0, 1);
+            if (GX) { glScissor(0, 0, GX, H); glClear(GL_COLOR_BUFFER_BIT); glScissor(GX + GW, 0, W - GX - GW, H); glClear(GL_COLOR_BUFFER_BIT); }
+            if (GY) { glScissor(0, 0, W, H - GY - GH); glClear(GL_COLOR_BUFFER_BIT); glScissor(0, H - GY, W, GY); glClear(GL_COLOR_BUFFER_BIT); }
+            glPopAttrib();
+        }
+        if (show_badges) draw_badges(W, H);
         draw_keyboard_overlay(W, H);
         SDL_GL_SwapWindow(win);
+        // 60 fps cap: the game was written for phones and breaks on zero-length frames
+        // (e.g. ScriptManager::Update loops forever when the frame delta is 0 ms)
+        const int64_t frame_ns = 16666667;
+        int64_t now = host::mono_ns();
+        if (next_frame == 0 || now - next_frame > 100000000) next_frame = now;
+        next_frame += frame_ns;
+        int64_t wait = next_frame - host::mono_ns();
+        if (wait > 2000000) host::sleep_ms((int)(wait / 1000000) - 1);
+        while (host::mono_ns() < next_frame) {}
     }
     jni_native("GameGLSurfaceView", "nativeDefaultPause", o_view, {});
     SDL_Quit();

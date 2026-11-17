@@ -83,7 +83,7 @@ def build(name):
     jobs = []
     for f in sorted(os.listdir(GEN)):
         if f.endswith(".c"):
-            jobs.append((cc + ["-O2", "-w", "-fno-strict-aliasing", "-DPW2_DEBUG"] + inc, os.path.join(GEN, f), "g_" + f[:-2]))
+            jobs.append((cc + ["-O2", "-w", "-fno-strict-aliasing", "-ffp-contract=off", "-DPW2_DEBUG"] + inc, os.path.join(GEN, f), "g_" + f[:-2]))
     zsrc = os.path.join(PC, "third_party/zlib")
     for f in sorted(os.listdir(zsrc)):
         if f.endswith(".c"): jobs.append((cc + ["-O2", "-w"] + zinc, os.path.join(zsrc, f), "z_" + f[:-2]))
@@ -112,7 +112,7 @@ def build(name):
         if not os.path.exists(ico) and os.path.exists(apk) and shutil.which("magick"):
             sys.path.insert(0, os.path.join(PC, "scripts")); import icon; icon.make(apk)
         if os.path.exists(ico): link += [os.path.join(PC, "res", "app.rc")]
-        link += ["-Wl,--subsystem,windows", "-Wl,--stack,67108864", "-lshell32", "-lole32", "-luser32"]
+        link += ["-Wl,--subsystem,windows", "-Wl,--stack,67108864", "-lshell32", "-lole32", "-luser32", "-lwinmm"]
     elif name.startswith("macos"):
         link += ["-Wl,-stack_size,0x4000000", "-Wl,-headerpad,0x4000"]
     else:

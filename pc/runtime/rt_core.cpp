@@ -66,6 +66,20 @@ static void on_crash(const char *what, void *addr) {
     if (c) {
         fprintf(stderr, "[pw2] guest pc=0x%x (%s) lr=%s\n", c->r[15], sym_name(BASE + c->r[15]), sym_name(c->r[14]));
         for (int k = 0; k < 16; k++) fprintf(stderr, "  r%-2d=%08x%s", k, c->r[k], k % 4 == 3 ? "\n" : "");
+        if (const char *dump = getenv("PW2_DUMP")) {        // "reg+off[:n],*reg+off+off2[:n]" (hex), e.g. "r13:4,*r4+7c+4:3"
+            std::string spec = dump; size_t p = 0;
+            while (p < spec.size()) {
+                size_t q = spec.find(',', p); if (q == std::string::npos) q = spec.size();
+                std::string it = spec.substr(p, q - p); p = q + 1;
+                unsigned n = 4; size_t colon = it.find(':'); if (colon != std::string::npos) { n = (unsigned)atoi(it.c_str() + colon + 1); it = it.substr(0, colon); }
+                bool deref = !it.empty() && it[0] == '*'; if (deref) it = it.substr(1);
+                unsigned reg = 0, o1 = 0, o2 = 0; sscanf(it.c_str(), "r%u+%x+%x", &reg, &o1, &o2);
+                uint32_t a = c->r[reg & 15] + o1; if (deref) a = R32(a) + o2;
+                fprintf(stderr, "[pw2] %s =", it.c_str());
+                for (unsigned k = 0; k < n && a; k++) { uint32_t v = R32(a + 4 * k); float f; memcpy(&f, &v, 4); fprintf(stderr, " %08x(%g)", v, f); }
+                fprintf(stderr, "\n");
+            }
+        }
     }
     fflush(stderr);
 }

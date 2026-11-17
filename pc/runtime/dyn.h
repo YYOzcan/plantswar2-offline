@@ -13,7 +13,7 @@
     X(SDL_GetWindowSize) X(SDL_SetWindowFullscreen) X(SDL_GL_CreateContext) X(SDL_GL_GetDrawableSize) X(SDL_GL_SetAttribute) \
     X(SDL_GL_SetSwapInterval) X(SDL_GL_SwapWindow) X(SDL_GL_GetProcAddress) X(SDL_OpenAudioDevice) X(SDL_PauseAudioDevice) \
     X(SDL_PollEvent) X(SDL_StartTextInput) X(SDL_StopTextInput) X(SDL_ShowSimpleMessageBox) X(SDL_SetHint) \
-    X(SDL_GetVersion)
+    X(SDL_GetVersion) X(SDL_GetKeyFromName) X(SDL_PushEvent)
 
 #define PW2_GL_FUNCS(X) X(glAlphaFunc) X(glBegin) X(glBindTexture) X(glBlendFunc) X(glClear) X(glClearColor) X(glColor4f) \
     X(glColorMask) X(glColorPointer) X(glCullFace) X(glDeleteTextures) X(glDepthFunc) X(glDepthMask) X(glDisable) \
@@ -59,6 +59,8 @@ bool load_gl(std::string &err);    // after the GL context exists
 #define SDL_ShowSimpleMessageBox PW2_USE(SDL_ShowSimpleMessageBox)
 #define SDL_SetHint PW2_USE(SDL_SetHint)
 #define SDL_GetVersion PW2_USE(SDL_GetVersion)
+#define SDL_GetKeyFromName PW2_USE(SDL_GetKeyFromName)
+#define SDL_PushEvent PW2_USE(SDL_PushEvent)
 #define glAlphaFunc PW2_USE(glAlphaFunc)
 #define glBegin PW2_USE(glBegin)
 #define glBindTexture PW2_USE(glBindTexture)
