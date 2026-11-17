@@ -35,3 +35,13 @@ saves/
 server/gamedata/
 play.out
 shot*.png
+.venv-pc/
+pc/build/
+pc/gen/
+pc/toolchain/
+pc/dist/
+pc/res/pw2.png
+pc/res/pw2.ico
+!pc/third_party/**/*.c
+!pc/third_party/*.c
+!pc/third_party/**/*.txt

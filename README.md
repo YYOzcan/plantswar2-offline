@@ -3,7 +3,8 @@
 *Plants War 2* (Four33, `com.ftt.pw2.global.gl` 1.0.6) was an online-only Android game whose servers shut
 down years ago. This project brings it back to life **fully offline**: the game server was reverse-engineered
 from the client and re-implemented, and it now runs **inside the APK itself**. On launch the game talks to its
-own `127.0.0.1`, so it works without internet on phones, tablets and the Android emulator.
+own `127.0.0.1`, so it works without internet on phones, tablets and the Android emulator — and there is a **native PC
+port** for Windows, Linux and macOS (see below).
 
 > This repository contains no game files. You need your own copy of the original APK
 > (`Plants War 2 1.0.6`, `com.ftt.pw2.global.gl`). Not affiliated with Four33.
@@ -47,6 +48,34 @@ avdmanager create avd -n pw2 -k "system-images;android-30;google_apis;x86_64"
 then run `./play.sh` (starts the emulator, installs/updates `build/pw2.apk`, launches the game).
 It uses software rendering by default: with host GPU this emulator build loses its GL context on NVIDIA
 after a while and Android freezes. `PW2_GPU=host ./play.sh` is faster if your GPU driver behaves.
+
+### Native PC port (Windows / Linux / macOS, no emulator)
+`pc/` statically recompiles the game's ARM engine (`libGame.so`) to C and runs it natively with a small
+runtime: Android libc/JNI/GLES1 are re-implemented on top of SDL2 and desktop OpenGL, and the offline server
+is built in (a C++ port of the embedded server, reached through in-process virtual sockets), so it needs no
+emulator, no Java and no internet.
+
+| Release file | Platform | Run |
+|---|---|---|
+| `PlantsWar2.exe` | Windows 10/11 x64 | double-click (single file; SmartScreen: *More info → Run anyway*) |
+| `PlantsWar2-x86_64.AppImage` | Linux x86_64, glibc 2.17+ | `chmod +x` and double-click |
+| `PlantsWar2.dmg` | macOS 11+, Intel and Apple Silicon | open, drag *Plants War 2* to Applications; first launch: right-click → Open (ad-hoc signed) |
+
+Controls: mouse = touch, Esc = Android back button, F11 = fullscreen. Saves: `%APPDATA%\PlantsWar2`,
+`~/.local/share/PlantsWar2`, `~/Library/Application Support/PlantsWar2` (`save.json` has the same format as
+the Android save).
+
+Building (from Linux; Windows and macOS are cross-compiled with [zig](https://ziglang.org)):
+```sh
+python3 -m venv .venv-pc && .venv-pc/bin/pip install capstone pyelftools pycdlib
+scripts/setup.sh /path/to/Plants_War_2_1.0.6.apk && scripts/build.sh     # patched APK -> build/pw2.apk
+.venv-pc/bin/python pc/build.py native                  # quick local build: pc/build/native/PlantsWar2 <apk>
+.venv-pc/bin/python pc/build.py windows linux macos     # release binaries (needs pc/toolchain, see below)
+.venv-pc/bin/python pc/scripts/package.py build/pw2.apk # -> pc/dist/{PlantsWar2.exe, .AppImage, .dmg}
+```
+`pc/toolchain/` (not in git) holds zig 0.14.1, the SDL2 2.32.10 mingw package and macOS framework, an SDL2
+`.so` built with zig for glibc 2.17, appimagetool, rcodesign and libdmg-hfsplus. The recompiler is verified
+instruction-by-instruction against Unicorn (`pc/recomp/insntest.py`, `funtest.py`, `lockstep.py`).
 
 ### Saves
 The save lives in the app's private storage. With the game running and the device connected over adb:
