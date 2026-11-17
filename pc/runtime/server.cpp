@@ -732,4 +732,11 @@ bool server_http(int port, const std::string &req, std::string &resp) {
     return true;
 }
 
+bool server_script_done(const std::string &id) {
+    std::lock_guard<std::mutex> l(mu);
+    P want = S(id);
+    for (auto &kv : users()->o) { P sc = kv.second->get("scripts"); if (sc && sc->t == Val::ARR && contains(sc, want)) return true; }
+    return false;
+}
+
 std::string server_replay(const std::string &plain) { std::lock_guard<std::mutex> l(mu); return handle_action(plain); }

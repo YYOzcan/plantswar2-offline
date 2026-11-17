@@ -62,7 +62,8 @@ emulator, no Java and no internet.
 | `PlantsWar2.dmg` | macOS 11+, Intel and Apple Silicon | open, drag *Plants War 2* to Applications; first launch: right-click → Open (ad-hoc signed) |
 
 Controls: mouse = touch (left or right button), Esc = Android back button, F11 = fullscreen.
-Battle hotkeys (LoL style, shown as small badges on the HUD; F1 hides them): **Q W E R** skills (Ctrl+key = level
+Battle hotkeys (LoL style, enabled once the beginner tutorial is finished and hidden while a tutorial tip plays;
+shown as small badges on the HUD, F1 hides them): **Q W E R** skills (Ctrl+key = level
 up), **1–4** potions/items, **D** summon minion, **F** target, **Space** camera, **X** 2× speed, **P** pause.
 The game is drawn in a 16:9 area (black bars on other aspect ratios) so the HUD layout and hotkeys stay fixed;
 it runs at a fixed 60 fps like on phones. Saves: `%APPDATA%\PlantsWar2`,

@@ -296,6 +296,15 @@ const Hotkey HOTKEYS[] = {
     {SDLK_x, false, 0.883f, 0.061f, "X", -0.030f, 0.045f}, {SDLK_p, false, 0.955f, 0.061f, "P", 0.012f, 0.050f},
 };
 uint32_t scene_type() { return R32(BASE + SCENE_MANAGER + 0x24); }
+// hotkeys + badges only after the beginner tutorial (last script "6-10") and never while a tutorial/tip script plays
+bool hotkeys_active() {
+    if (scene_type() != SCENE_BATTLE) return false;
+    static uint32_t script_mgr = sym_addr("_ZN13ScriptManager11_staticThisE");
+    if (script_mgr && R32(script_mgr + 0x64)) return false;          // ScriptManager current script
+    static bool done = false; static int64_t checked = 0;
+    if (!done && host::mono_ns() - checked > 1000000000) { checked = host::mono_ns(); done = server_script_done("6-10"); }
+    return done;
+}
 bool hotkey_pos(SDL_Keycode k, bool ctrl, int W, int H, float &px, float &py) {
     (void)W; (void)H;
     for (auto &h : HOTKEYS) {
@@ -310,7 +319,7 @@ bool hotkey_pos(SDL_Keycode k, bool ctrl, int W, int H, float &px, float &py) {
 struct Badge { GLuint tex = 0; int w = 0, h = 0; };
 std::map<std::string, Badge> badges;
 void draw_badges(int W, int H) {
-    if (scene_type() != SCENE_BATTLE) return;
+    if (!hotkeys_active()) return;
     GLint old_tex = 0, old_mode = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &old_tex); glGetIntegerv(GL_MATRIX_MODE, &old_mode);
     glPushAttrib(GL_ALL_ATTRIB_BITS); glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
     glViewport(GX, H - GY - GH, GW, GH); glDisable(GL_SCISSOR_TEST);
@@ -513,7 +522,7 @@ int main(int argc, char **argv) {
                     } else if (e.key.keysym.sym == SDLK_ESCAPE) { kb_active = false; SDL_StopTextInput(); }
                 } else if (e.key.keysym.sym == SDLK_ESCAPE || e.key.keysym.sym == SDLK_AC_BACK) {
                     jni_native("GameGLSurfaceView", "nativeDefaultBack", o_view, {});
-                } else if (!e.key.repeat && scene_type() == SCENE_BATTLE &&
+                } else if (!e.key.repeat && hotkeys_active() &&
                            hotkey_pos(e.key.keysym.sym, (e.key.keysym.mod & KMOD_CTRL) != 0, W, H, hx, hy)) {
                     touch(0, hx, hy); script.push_back(Step{frame + 3, "uppx", hx, hy, ""});
                 } else if (e.key.keysym.sym == SDLK_F1) {
